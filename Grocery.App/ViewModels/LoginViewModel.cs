@@ -1,9 +1,7 @@
-﻿
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Grocery.Core.Interfaces.Services;
 using Grocery.Core.Models;
-
 namespace Grocery.App.ViewModels
 {
     public partial class LoginViewModel : BaseViewModel
@@ -20,8 +18,15 @@ namespace Grocery.App.ViewModels
         [ObservableProperty]
         private string loginMessage;
 
+        // *** VOEG DEZE 3 PROPERTIES TOE ***
+        [ObservableProperty]
+        private bool isPasswordHidden = true;
+
+        [ObservableProperty]
+        private string passwordToggleText = "👁️";
+
         public LoginViewModel(IAuthService authService, GlobalViewModel global)
-        { //_authService = App.Services.GetServices<IAuthService>().FirstOrDefault();
+        {
             _authService = authService;
             _global = global;
         }
@@ -40,6 +45,14 @@ namespace Grocery.App.ViewModels
             {
                 LoginMessage = "Ongeldige inloggegevens.";
             }
+        }
+
+        // *** VOEG DEZE METHODE TOE ***
+        [RelayCommand]
+        private void TogglePasswordVisibility()
+        {
+            IsPasswordHidden = !IsPasswordHidden;
+            PasswordToggleText = IsPasswordHidden ? "👁️" : "🙈";
         }
     }
 }
