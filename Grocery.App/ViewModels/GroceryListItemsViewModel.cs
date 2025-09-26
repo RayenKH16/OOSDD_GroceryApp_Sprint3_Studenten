@@ -15,16 +15,25 @@ namespace Grocery.App.ViewModels
         private readonly IGroceryListItemsService _groceryListItemsService;
         private readonly IProductService _productService;
         private readonly IFileSaverService _fileSaverService;
-        
+
         public ObservableCollection<GroceryListItem> MyGroceryListItems { get; set; } = [];
+
+        // Originele lijst met alle beschikbare producten
         public ObservableCollection<Product> AvailableProducts { get; set; } = [];
+
+        // Gefilterde lijst, hieraan bindt de CollectionView
+        public ObservableCollection<Product> FilteredProducts { get; set; } = [];
 
         [ObservableProperty]
         GroceryList groceryList = new(0, "None", DateOnly.MinValue, "", 0);
+
         [ObservableProperty]
         string myMessage;
 
-        public GroceryListItemsViewModel(IGroceryListItemsService groceryListItemsService, IProductService productService, IFileSaverService fileSaverService)
+        public GroceryListItemsViewModel(
+            IGroceryListItemsService groceryListItemsService,
+            IProductService productService,
+            IFileSaverService fileSaverService)
         {
             _groceryListItemsService = groceryListItemsService;
             _productService = productService;
@@ -35,7 +44,9 @@ namespace Grocery.App.ViewModels
         private void Load(int id)
         {
             MyGroceryListItems.Clear();
-            foreach (var item in _groceryListItemsService.GetAllOnGroceryListId(id)) MyGroceryListItems.Add(item);
+            foreach (var item in _groceryListItemsService.GetAllOnGroceryListId(id))
+                MyGroceryListItems.Add(item);
+
             GetAvailableProducts();
         }
 
@@ -43,8 +54,14 @@ namespace Grocery.App.ViewModels
         {
             AvailableProducts.Clear();
             foreach (Product p in _productService.GetAll())
-                if (MyGroceryListItems.FirstOrDefault(g => g.ProductId == p.Id) == null  && p.Stock > 0)
+            {
+                if (MyGroceryListItems.FirstOrDefault(g => g.ProductId == p.Id) == null && p.Stock > 0)
                     AvailableProducts.Add(p);
+            }
+
+            // Initieel: alle producten zichtbaar
+            FilteredProducts.Clear();
+            foreach (var p in AvailableProducts) FilteredProducts.Add(p);
         }
 
         partial void OnGroceryListChanged(GroceryList value)
@@ -58,6 +75,7 @@ namespace Grocery.App.ViewModels
             Dictionary<string, object> paramater = new() { { nameof(GroceryList), GroceryList } };
             await Shell.Current.GoToAsync($"{nameof(ChangeColorView)}?Name={GroceryList.Name}", true, paramater);
         }
+
         [RelayCommand]
         public void AddProduct(Product product)
         {
@@ -67,6 +85,7 @@ namespace Grocery.App.ViewModels
             product.Stock--;
             _productService.Update(product);
             AvailableProducts.Remove(product);
+            FilteredProducts.Remove(product); // ook uit gefilterde lijst halen
             OnGroceryListChanged(GroceryList);
         }
 
@@ -86,5 +105,26 @@ namespace Grocery.App.ViewModels
             }
         }
 
+        // 🔎 Zoekfunctie voor de SearchBar
+        [RelayCommand]
+        public void Search(string searchTerm)
+        {
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                // Geen zoekterm → alles tonen
+                FilteredProducts.Clear();
+                foreach (var p in AvailableProducts) FilteredProducts.Add(p);
+            }
+            else
+            {
+                var lower = searchTerm.ToLower();
+                var filtered = AvailableProducts
+                                .Where(p => p.Name.ToLower().Contains(lower))
+                                .ToList();
+
+                FilteredProducts.Clear();
+                foreach (var p in filtered) FilteredProducts.Add(p);
+            }
+        }
     }
 }
